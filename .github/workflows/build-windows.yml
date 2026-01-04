@@ -52,8 +52,16 @@ jobs:
     - name: Package release
       run: |
         mkdir -p release
-        cp -r luaclib cservice examples lualib service test release/
+        cp -r luaclib cservice examples lualib service test autotest release/
         cp platform.dll lua54.dll skynet.dll skynet.exe release/
+        
+        # Copy Lua executables from 3rd/lua/src/
+        if [ -f 3rd/lua/src/lua.exe ]; then
+          cp 3rd/lua/src/lua.exe release/
+        fi
+        if [ -f 3rd/lua/src/luac.exe ]; then
+          cp 3rd/lua/src/luac.exe release/
+        fi
         
         # Copy MinGW runtime dependencies (critical for Windows execution)
         if [ -f /mingw32/bin/libgcc_s_dw2-1.dll ]; then
@@ -103,9 +111,12 @@ jobs:
           
           ### What's included
           - skynet.exe - Main executable
+          - lua.exe - Lua interpreter
+          - luac.exe - Lua compiler
           - All required DLLs (platform.dll, lua54.dll, skynet.dll)
           - Runtime dependencies (libgcc, libwinpthread)
           - Examples, libraries, and services
+          - autotest - Automated testing suite
           
           ### Build Information
           - Commit: ${{ github.sha }}
