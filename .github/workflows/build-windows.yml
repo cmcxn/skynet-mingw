@@ -1,0 +1,105 @@
+name: Build Windows
+
+on:
+  push:
+    branches: [ master, main ]
+    tags:
+      - 'v*'
+  pull_request:
+    branches: [ master, main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+    
+    defaults:
+      run:
+        shell: msys2 {0}
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        submodules: recursive
+    
+    - name: Setup MSYS2
+      uses: msys2/setup-msys2@v2
+      with:
+        msystem: MINGW64
+        update: true
+        install: >-
+          base-devel
+          mingw-w64-x86_64-gcc
+          mingw-w64-x86_64-make
+          make
+          tar
+          zip
+    
+    - name: Prepare build environment
+      run: |
+        bash prepare.sh
+    
+    - name: Build project
+      run: |
+        make
+    
+    - name: Run tests
+      run: |
+        ./skynet.exe autotest/config
+      timeout-minutes: 5
+    
+    - name: Package release
+      run: |
+        mkdir -p release
+        cp -r luaclib cservice examples lualib service test release/
+        cp platform.dll lua54.dll skynet.dll skynet.exe release/
+        
+        # Copy MinGW runtime dependencies
+        cp /mingw64/bin/libgcc_s_seh-1.dll release/ || true
+        cp /mingw64/bin/libwinpthread-1.dll release/ || true
+        
+        # Create version info file
+        echo "Build Date: $(date)" > release/BUILD_INFO.txt
+        echo "Commit: ${{ github.sha }}" >> release/BUILD_INFO.txt
+        echo "Branch: ${{ github.ref_name }}" >> release/BUILD_INFO.txt
+        
+        cd release
+        zip -r ../skynet-mingw-windows.zip *
+        cd ..
+    
+    - name: Upload artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: skynet-mingw-windows
+        path: skynet-mingw-windows.zip
+        retention-days: 30
+    
+    - name: Create Release
+      if: startsWith(github.ref, 'refs/tags/')
+      uses: softprops/action-gh-release@v1
+      with:
+        files: skynet-mingw-windows.zip
+        body: |
+          ## Skynet MinGW Windows Build
+          
+          This is an automated build of skynet-mingw for Windows.
+          
+          ### Installation
+          1. Download `skynet-mingw-windows.zip`
+          2. Extract to your preferred location
+          3. Run `skynet.exe examples/config` to test
+          
+          ### What's included
+          - skynet.exe - Main executable
+          - All required DLLs (platform.dll, lua54.dll, skynet.dll)
+          - Runtime dependencies (libgcc, libwinpthread)
+          - Examples, libraries, and services
+          
+          ### Build Information
+          - Commit: ${{ github.sha }}
+          - Build Date: ${{ github.event.head_commit.timestamp }}
+        draft: false
+        prerelease: false
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

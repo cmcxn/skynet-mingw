@@ -1,4 +1,4 @@
-# 关于skynet-mingw [![Build status](https://ci.appveyor.com/api/projects/status/9j45lldyxmfdau3r?svg=true)](https://ci.appveyor.com/project/dpull/skynet-mingw)
+# 关于skynet-mingw [![Build status](https://ci.appveyor.com/api/projects/status/9j45lldyxmfdau3r?svg=true)](https://ci.appveyor.com/project/dpull/skynet-mingw) [![Build Windows](https://github.com/cmcxn/skynet-mingw/actions/workflows/build-windows.yml/badge.svg)](https://github.com/cmcxn/skynet-mingw/actions/workflows/build-windows.yml)
 
 [skynet-mingw](https://github.com/dpull/skynet-mingw) 是[skynet](https://github.com/cloudwu/skynet)的windows平台的实现。其主要特点是：
 
@@ -7,7 +7,10 @@
 1. 自动更新skynet，自动构建，自动化测试，确保质量。
 
 ## 编译
-不想自行编译的朋友可访问 [自动构建平台获取最新的构建版本](https://ci.appveyor.com/project/dpull/skynet-mingw/build/artifacts)。
+不想自行编译的朋友可访问以下平台获取最新的构建版本：
+- [GitHub Releases](https://github.com/cmcxn/skynet-mingw/releases) - **推荐**：自动发布的正式版本
+- [GitHub Actions](https://github.com/cmcxn/skynet-mingw/actions) - 每次提交的构建产物
+- [AppVeyor](https://ci.appveyor.com/project/dpull/skynet-mingw/build/artifacts) - 旧的构建平台
 
 1. 安装 [MinGW](http://sourceforge.net/projects/mingw/files/)
 1. 安装 `gcc g++`
