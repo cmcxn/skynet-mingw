@@ -13,10 +13,8 @@
 #define SIGHUP 1
 #define SA_RESTART 0x0002
 
-/* Define sigset_t if not already defined by system headers */
-#ifndef _SIGSET_T_
+/* MinGW defines _sigset_t but not sigset_t, so we typedef it here */
 typedef _sigset_t sigset_t;
-#endif
 
 struct sigaction {
 	void (*sa_handler)(int);
