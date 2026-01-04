@@ -12,6 +12,12 @@
 /*<signal.h>*/
 #define SIGHUP 1
 #define SA_RESTART 0x0002
+
+/* Define sigset_t if not already defined by system headers */
+#ifndef _SIGSET_T_
+typedef _sigset_t sigset_t;
+#endif
+
 struct sigaction {
 	void (*sa_handler)(int);
 	sigset_t sa_mask;
@@ -28,7 +34,10 @@ char *strsep(char **stringp, const char *delim);
 
 struct tm *localtime_r(const time_t *timer, struct tm *buf);
 
+/* Define CLOCK_* constants only if not already defined by system headers */
+#ifndef CLOCK_REALTIME
 enum { CLOCK_THREAD_CPUTIME_ID, CLOCK_REALTIME, CLOCK_MONOTONIC };
+#endif
 #define clock_gettime clock_gettime_platform
 int clock_gettime_platform(int what, struct timespec *ti);
 
