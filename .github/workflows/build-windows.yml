@@ -56,8 +56,16 @@ jobs:
         cp platform.dll lua54.dll skynet.dll skynet.exe release/
         
         # Copy MinGW runtime dependencies
-        cp /mingw64/bin/libgcc_s_seh-1.dll release/ || true
-        cp /mingw64/bin/libwinpthread-1.dll release/ || true
+        if [ -f /mingw64/bin/libgcc_s_seh-1.dll ]; then
+          cp /mingw64/bin/libgcc_s_seh-1.dll release/
+        else
+          echo "Warning: libgcc_s_seh-1.dll not found"
+        fi
+        if [ -f /mingw64/bin/libwinpthread-1.dll ]; then
+          cp /mingw64/bin/libwinpthread-1.dll release/
+        else
+          echo "Warning: libwinpthread-1.dll not found"
+        fi
         
         # Create version info file
         echo "Build Date: $(date)" > release/BUILD_INFO.txt
@@ -98,7 +106,7 @@ jobs:
           
           ### Build Information
           - Commit: ${{ github.sha }}
-          - Build Date: ${{ github.event.head_commit.timestamp }}
+          - Build Date: ${{ github.event.repository.pushed_at }}
         draft: false
         prerelease: false
       env:
