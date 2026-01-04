@@ -12,6 +12,10 @@
 /*<signal.h>*/
 #define SIGHUP 1
 #define SA_RESTART 0x0002
+
+/* MinGW defines _sigset_t but not sigset_t, so we typedef it here */
+typedef _sigset_t sigset_t;
+
 struct sigaction {
 	void (*sa_handler)(int);
 	sigset_t sa_mask;
@@ -28,7 +32,10 @@ char *strsep(char **stringp, const char *delim);
 
 struct tm *localtime_r(const time_t *timer, struct tm *buf);
 
+/* Define CLOCK_* constants only if not already defined by system headers */
+#ifndef CLOCK_REALTIME
 enum { CLOCK_THREAD_CPUTIME_ID, CLOCK_REALTIME, CLOCK_MONOTONIC };
+#endif
 #define clock_gettime clock_gettime_platform
 int clock_gettime_platform(int what, struct timespec *ti);
 
@@ -68,6 +75,7 @@ poll_fd sp_create();
 void sp_release(poll_fd fd);
 int sp_add(poll_fd fd, int sock, void *ud);
 void sp_del(poll_fd fd, int sock);
+int sp_enable(poll_fd fd, int sock, void *ud, bool read_enable, bool write_enable);
 void sp_write(poll_fd, int sock, void *ud, bool enable);
 int sp_wait(poll_fd, struct event *e, int max);
 void sp_nonblocking(int sock);
