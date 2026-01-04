@@ -46,6 +46,7 @@ jobs:
     
     - name: Run tests
       run: |
+        # Using Unix-style path separator (works in MSYS2 environment)
         ./skynet.exe autotest/config
       timeout-minutes: 5
     
@@ -55,20 +56,23 @@ jobs:
         cp -r luaclib cservice examples lualib service test release/
         cp platform.dll lua54.dll skynet.dll skynet.exe release/
         
-        # Copy MinGW runtime dependencies
+        # Copy MinGW runtime dependencies (critical for Windows execution)
         if [ -f /mingw64/bin/libgcc_s_seh-1.dll ]; then
           cp /mingw64/bin/libgcc_s_seh-1.dll release/
         else
-          echo "Warning: libgcc_s_seh-1.dll not found"
+          echo "Error: libgcc_s_seh-1.dll not found - package will not work!"
+          exit 1
         fi
         if [ -f /mingw64/bin/libwinpthread-1.dll ]; then
           cp /mingw64/bin/libwinpthread-1.dll release/
         else
-          echo "Warning: libwinpthread-1.dll not found"
+          echo "Error: libwinpthread-1.dll not found - package will not work!"
+          exit 1
         fi
         
         # Create version info file
-        echo "Build Date: $(date)" > release/BUILD_INFO.txt
+        BUILD_DATE=$(date -u +"%Y-%m-%d %H:%M:%S UTC")
+        echo "Build Date: $BUILD_DATE" > release/BUILD_INFO.txt
         echo "Commit: ${{ github.sha }}" >> release/BUILD_INFO.txt
         echo "Branch: ${{ github.ref_name }}" >> release/BUILD_INFO.txt
         
@@ -106,7 +110,8 @@ jobs:
           
           ### Build Information
           - Commit: ${{ github.sha }}
-          - Build Date: ${{ github.event.repository.pushed_at }}
+          - Tag: ${{ github.ref_name }}
+          - See BUILD_INFO.txt in the package for detailed build information
         draft: false
         prerelease: false
       env:
