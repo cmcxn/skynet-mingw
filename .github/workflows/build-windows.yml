@@ -26,12 +26,12 @@ jobs:
     - name: Setup MSYS2
       uses: msys2/setup-msys2@v2
       with:
-        msystem: MINGW64
+        msystem: MINGW32
         update: true
         install: >-
           base-devel
-          mingw-w64-x86_64-gcc
-          mingw-w64-x86_64-make
+          mingw-w64-i686-gcc
+          mingw-w64-i686-make
           make
           tar
           zip
@@ -56,14 +56,14 @@ jobs:
         cp platform.dll lua54.dll skynet.dll skynet.exe release/
         
         # Copy MinGW runtime dependencies (critical for Windows execution)
-        if [ -f /mingw64/bin/libgcc_s_seh-1.dll ]; then
-          cp /mingw64/bin/libgcc_s_seh-1.dll release/
+        if [ -f /mingw32/bin/libgcc_s_dw2-1.dll ]; then
+          cp /mingw32/bin/libgcc_s_dw2-1.dll release/
         else
-          echo "Error: libgcc_s_seh-1.dll not found - package will not work!"
+          echo "Error: libgcc_s_dw2-1.dll not found - package will not work!"
           exit 1
         fi
-        if [ -f /mingw64/bin/libwinpthread-1.dll ]; then
-          cp /mingw64/bin/libwinpthread-1.dll release/
+        if [ -f /mingw32/bin/libwinpthread-1.dll ]; then
+          cp /mingw32/bin/libwinpthread-1.dll release/
         else
           echo "Error: libwinpthread-1.dll not found - package will not work!"
           exit 1
