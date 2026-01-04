@@ -46,7 +46,6 @@ jobs:
     
     - name: Run tests
       run: |
-        # Using Unix-style path separator (works in MSYS2 environment)
         ./skynet.exe autotest/config
       timeout-minutes: 5
     
@@ -70,9 +69,9 @@ jobs:
           exit 1
         fi
         
-        # Create version info file
-        BUILD_DATE=$(date -u +"%Y-%m-%d %H:%M:%S UTC")
-        echo "Build Date: $BUILD_DATE" > release/BUILD_INFO.txt
+        # Create version info file with UTC timestamp
+        BUILD_DATE=$(date -u +"%Y-%m-%d %H:%M:%S")
+        echo "Build Date: $BUILD_DATE UTC" > release/BUILD_INFO.txt
         echo "Commit: ${{ github.sha }}" >> release/BUILD_INFO.txt
         echo "Branch: ${{ github.ref_name }}" >> release/BUILD_INFO.txt
         
