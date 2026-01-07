@@ -1,0 +1,11 @@
+include "examples/config.path"
+
+thread = 4
+logger = nil
+logpath = "."
+harbor = 0
+start = "roleplay_main"
+bootstrap = "snlua bootstrap"
+standalone = "0.0.0.0:2013"
+roleplay_port = 7001
+cpath = root.."cservice/?.so"
