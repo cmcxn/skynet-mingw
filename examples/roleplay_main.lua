@@ -1,5 +1,6 @@
 local skynet = require "skynet"
 local socket = require "skynet.socket"
+local httpc = require "http.httpc"
 
 local string = string
 local table = table
@@ -11,8 +12,8 @@ local function trim_line(line)
 	return (line:gsub("\r", ""):gsub("%s+$", ""))
 end
 
-local function add_history(state, role, text)
-	table.insert(state.history, { role = role, text = text })
+local function add_history(state, role, label, text)
+	table.insert(state.history, { role = role, label = label, text = text })
 	if #state.history > MAX_HISTORY then
 		table.remove(state.history, 1)
 	end
@@ -24,7 +25,7 @@ local function format_history(state)
 	end
 	local lines = {}
 	for _, item in ipairs(state.history) do
-		table.insert(lines, string.format("[%s] %s", item.role, item.text))
+		table.insert(lines, string.format("[%s] %s", item.label or item.role, item.text))
 	end
 	return table.concat(lines, "\r\n")
 end
@@ -39,7 +40,7 @@ local function build_state(addr)
 	}
 end
 
-local function generate_reply(state, line)
+local function command_reply(state, line)
 	local lower = string.lower(line)
 	if lower == "help" or line == "帮助" then
 		return table.concat({
@@ -71,6 +72,122 @@ local function generate_reply(state, line)
 		return string.format("好，我会以“%s”的人设与你对话。", state.persona)
 	end
 
+	return nil
+end
+
+local function json_escape(value)
+	return (value:gsub("[\\\"\b\f\n\r\t]", {
+		["\\"] = "\\\\",
+		["\""] = "\\\"",
+		["\b"] = "\\b",
+		["\f"] = "\\f",
+		["\n"] = "\\n",
+		["\r"] = "\\r",
+		["\t"] = "\\t",
+	}))
+end
+
+local function build_messages(state)
+	local system = string.format(
+		"你是奇幻世界酒馆里的%s，请用中文进行角色扮演。玩家名叫%s。",
+		state.persona or "旅店老板",
+		state.player_name
+	)
+	local messages = {
+		string.format("{\"role\":\"system\",\"content\":\"%s\"}", json_escape(system)),
+	}
+	for _, item in ipairs(state.history) do
+		table.insert(
+			messages,
+			string.format(
+				"{\"role\":\"%s\",\"content\":\"%s\"}",
+				item.role,
+				json_escape(item.text)
+			)
+		)
+	end
+	return "[" .. table.concat(messages, ",") .. "]"
+end
+
+local function decode_json_string(body, start_index)
+	local i = start_index
+	local out = {}
+	while i <= #body do
+		local ch = body:sub(i, i)
+		if ch == "\\" then
+			local next_ch = body:sub(i + 1, i + 1)
+			if next_ch == "n" then
+				table.insert(out, "\n")
+			elseif next_ch == "r" then
+				table.insert(out, "\r")
+			elseif next_ch == "t" then
+				table.insert(out, "\t")
+			elseif next_ch == "b" then
+				table.insert(out, "\b")
+			elseif next_ch == "f" then
+				table.insert(out, "\f")
+			else
+				table.insert(out, next_ch)
+			end
+			i = i + 2
+		elseif ch == "\"" then
+			return table.concat(out), i
+		else
+			table.insert(out, ch)
+			i = i + 1
+		end
+	end
+	return nil
+end
+
+local function extract_first_content(body)
+	local key = "\"content\""
+	local start_pos = body:find(key, 1, true)
+	if not start_pos then
+		return nil
+	end
+	local colon = body:find(":", start_pos + #key)
+	if not colon then
+		return nil
+	end
+	local quote = body:find("\"", colon + 1)
+	if not quote then
+		return nil
+	end
+	return decode_json_string(body, quote + 1)
+end
+
+local function request_openai(state)
+	local api_key = skynet.getenv("openai_api_key")
+	if not api_key or api_key == "" then
+		return nil, "missing openai_api_key"
+	end
+	local body = string.format(
+		"{\"model\":\"gpt-4o\",\"messages\":%s}",
+		build_messages(state)
+	)
+	local status, resp = httpc.request(
+		"POST",
+		"https://api.openai.com",
+		"/v1/chat/completions",
+		{},
+		{
+			["content-type"] = "application/json",
+			["authorization"] = "Bearer " .. api_key,
+		},
+		body
+	)
+	if status ~= 200 then
+		return nil, string.format("openai status %s", tostring(status))
+	end
+	local content = extract_first_content(resp)
+	if not content then
+		return nil, "openai response missing content"
+	end
+	return content
+end
+
+local function generate_reply(state, line)
 	if line:find("任务") or line:find("quest") then
 		return string.format(
 			"【%s】%s压低声音对%s说：最近的森林里确实有异动，但情报要用故事交换。",
@@ -118,12 +235,21 @@ local function handle_client(fd, addr)
 		if line == "" then
 			send_line(fd, "（老板抬眼看了你一眼，等待你的回应。）")
 		else
-			add_history(state, state.player_name, line)
-			local reply = generate_reply(state, line)
-			add_history(state, state.innkeeper, reply)
-			send_line(fd, reply)
-			if line == "quit" or line == "退出" then
-				break
+			local reply = command_reply(state, line)
+			if reply then
+				send_line(fd, reply)
+				if line == "quit" or line == "退出" then
+					break
+				end
+			else
+				add_history(state, "user", state.player_name, line)
+				local ai_reply, err = request_openai(state)
+				if not ai_reply then
+					skynet.error(string.format("openai reply failed: %s", tostring(err)))
+					ai_reply = generate_reply(state, line)
+				end
+				add_history(state, "assistant", state.innkeeper, ai_reply)
+				send_line(fd, ai_reply)
 			end
 		end
 	end
