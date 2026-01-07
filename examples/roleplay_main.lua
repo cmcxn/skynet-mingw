@@ -283,6 +283,7 @@ local function handle_client(fd, addr)
 				local ai_reply, err = request_openai(state)
 				if not ai_reply then
 					skynet.error(string.format("openai reply failed: %s", tostring(err)))
+					send_line(fd, string.format("（OpenAI不可用：%s）", tostring(err)))
 					ai_reply = generate_reply(state, line)
 				end
 				add_history(state, "assistant", state.innkeeper, ai_reply)
