@@ -218,15 +218,42 @@ local function send_line(fd, text)
 	socket.write(fd, text .. "\r\n")
 end
 
+local function read_line(state, fd)
+	local buffer = {}
+	local pending = state.pending_char
+	state.pending_char = nil
+	while true do
+		local ch
+		if pending then
+			ch = pending
+			pending = nil
+		else
+			ch = socket.read(fd, 1)
+		end
+		if not ch or ch == "" then
+			return nil
+		end
+		if ch == "\n" then
+			break
+		elseif ch == "\r" then
+			local next_ch = socket.read(fd, 1)
+			if next_ch and next_ch ~= "" and next_ch ~= "\n" then
+				state.pending_char = next_ch
+			end
+			break
+		else
+			table.insert(buffer, ch)
+		end
+	end
+	return table.concat(buffer)
+end
+
 local function handle_client(fd, addr)
 	local state = build_state(addr)
 	send_line(fd, "欢迎来到北风旅店。输入 help 查看指令。")
 	send_line(fd, string.format("你来自 %s ，现在可以开始对话：", addr))
 	while true do
-		local line, rest = socket.readline(fd, "\n")
-		if line == false then
-			line = rest
-		end
+		local line = read_line(state, fd)
 		if not line or line == "" then
 			break
 		end
