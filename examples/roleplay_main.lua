@@ -1,7 +1,6 @@
 local skynet = require "skynet"
 local socket = require "skynet.socket"
 local httpc = require "http.httpc"
-local tls_available = pcall(require, "ltls.c")
 
 local string = string
 local table = table
@@ -164,9 +163,6 @@ local function request_openai(state)
 		return nil, "missing openai_api_key"
 	end
 	local base_url = skynet.getenv("openai_base_url") or "https://api.openai.com"
-	if not tls_available and base_url:match("^https://") then
-		return nil, "tls unavailable (ltls.c not loaded)"
-	end
 	local body = string.format(
 		"{\"model\":\"gpt-4o\",\"messages\":%s}",
 		build_messages(state)
@@ -184,6 +180,9 @@ local function request_openai(state)
 		body
 	)
 	if not ok then
+		if type(status) == "string" and status:find("ltls.c", 1, true) then
+			return nil, "https requires ltls.c; set openai_base_url to http proxy"
+		end
 		return nil, status
 	end
 	if status ~= 200 then
