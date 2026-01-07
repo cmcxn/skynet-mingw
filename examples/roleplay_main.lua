@@ -1,6 +1,7 @@
 local skynet = require "skynet"
 local socket = require "skynet.socket"
 local httpc = require "http.httpc"
+local tls_available = pcall(require, "ltls.c")
 
 local string = string
 local table = table
@@ -162,11 +163,15 @@ local function request_openai(state)
 	if not api_key or api_key == "" then
 		return nil, "missing openai_api_key"
 	end
+	if not tls_available then
+		return nil, "tls unavailable (ltls.c not loaded)"
+	end
 	local body = string.format(
 		"{\"model\":\"gpt-4o\",\"messages\":%s}",
 		build_messages(state)
 	)
-	local status, resp = httpc.request(
+	local ok, status, resp = pcall(
+		httpc.request,
 		"POST",
 		"https://api.openai.com",
 		"/v1/chat/completions",
@@ -177,6 +182,9 @@ local function request_openai(state)
 		},
 		body
 	)
+	if not ok then
+		return nil, status
+	end
 	if status ~= 200 then
 		return nil, string.format("openai status %s", tostring(status))
 	end
@@ -262,6 +270,7 @@ local function handle_client(fd, addr)
 		if line == "" then
 			send_line(fd, "（老板抬眼看了你一眼，等待你的回应。）")
 		else
+			skynet.error(string.format("roleplay recv from %s: %s", state.addr, line))
 			local reply = command_reply(state, line)
 			if reply then
 				send_line(fd, reply)
@@ -270,12 +279,14 @@ local function handle_client(fd, addr)
 				end
 			else
 				add_history(state, "user", state.player_name, line)
+				skynet.error("roleplay request openai")
 				local ai_reply, err = request_openai(state)
 				if not ai_reply then
 					skynet.error(string.format("openai reply failed: %s", tostring(err)))
 					ai_reply = generate_reply(state, line)
 				end
 				add_history(state, "assistant", state.innkeeper, ai_reply)
+				skynet.error("roleplay reply ready")
 				send_line(fd, ai_reply)
 			end
 		end
