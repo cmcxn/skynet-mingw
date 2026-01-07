@@ -8,4 +8,5 @@ start = "roleplay_main"
 bootstrap = "snlua bootstrap"
 roleplay_port = 7001
 -- openai_api_key = "sk-your-key"
+-- openai_base_url = "https://api.openai.com"
 cpath = root.."cservice/?.so"

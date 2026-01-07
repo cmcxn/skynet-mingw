@@ -163,7 +163,8 @@ local function request_openai(state)
 	if not api_key or api_key == "" then
 		return nil, "missing openai_api_key"
 	end
-	if not tls_available then
+	local base_url = skynet.getenv("openai_base_url") or "https://api.openai.com"
+	if not tls_available and base_url:match("^https://") then
 		return nil, "tls unavailable (ltls.c not loaded)"
 	end
 	local body = string.format(
@@ -173,7 +174,7 @@ local function request_openai(state)
 	local ok, status, resp = pcall(
 		httpc.request,
 		"POST",
-		"https://api.openai.com",
+		base_url,
 		"/v1/chat/completions",
 		{},
 		{
